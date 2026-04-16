@@ -1,9 +1,9 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QApplication, QLineEdit, QListWidget, QListWidgetItem,
-    QMenu, QSystemTrayIcon, QVBoxLayout, QWidget,
+    QApplication, QHBoxLayout, QLineEdit, QListWidget, QListWidgetItem,
+    QMenu, QPushButton, QSystemTrayIcon, QVBoxLayout, QWidget,
 )
-from PyQt6.QtGui import QAction, QIcon, QKeyEvent
+from PyQt6.QtGui import QAction, QIcon, QKeyEvent, QKeySequence, QShortcut
 
 from konsole_tray.dbus_client import KonsoleTab, KonsoleWindow, get_all_tabs, activate_tab
 
@@ -75,6 +75,21 @@ class SpotlightWindow(QWidget):
         self._list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._list.itemClicked.connect(self._on_item_clicked)
         layout.addWidget(self._list)
+
+        # Bottom bar
+        bottom = QHBoxLayout()
+        bottom.setContentsMargins(0, 0, 0, 0)
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.hide)
+        quit_btn = QPushButton("Quit")
+        quit_btn.clicked.connect(QApplication.quit)
+        bottom.addWidget(close_btn)
+        bottom.addStretch()
+        bottom.addWidget(quit_btn)
+        layout.addLayout(bottom)
+
+        # Ctrl+Q to quit
+        QShortcut(QKeySequence("Ctrl+Q"), self, QApplication.quit)
 
     def toggle(self) -> None:
         if self.isVisible():
@@ -195,23 +210,12 @@ class KonsoleTray:
 
         self._spotlight = SpotlightWindow()
 
-        # Right-click context menu
-        self.menu = QMenu()
-        search_action = QAction("Search Tabs...")
-        search_action.triggered.connect(self._spotlight.toggle)
-        self.menu.addAction(search_action)
-        self.menu.addSeparator()
-        quit_action = QAction("Quit")
-        quit_action.triggered.connect(QApplication.quit)
-        self.menu.addAction(quit_action)
-        self.tray.setContextMenu(self.menu)
-
-        # Left-click opens the spotlight
+        # Both left and right click toggle the spotlight
+        # (setContextMenu steals right-click but doesn't render on Wayland)
         self.tray.activated.connect(self._on_tray_activated)
 
     def show(self) -> None:
         self.tray.show()
 
     def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
-        if reason == QSystemTrayIcon.ActivationReason.Trigger:
-            self._spotlight.toggle()
+        self._spotlight.toggle()

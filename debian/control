@@ -1,0 +1,25 @@
+Source: konsole-tray
+Section: kde
+Priority: optional
+Maintainer: Jeroen Coekaerts <jeroen@dnxnetwork.lu>
+Rules-Requires-Root: no
+Build-Depends:
+ debhelper-compat (= 13),
+ dh-sequence-python3,
+ pybuild-plugin-pyproject,
+ python3-all,
+ python3-setuptools,
+Standards-Version: 4.7.2
+
+Package: konsole-tray
+Architecture: all
+Depends:
+ python3-pyqt6,
+ qdbus-qt6,
+ ${python3:Depends},
+ ${misc:Depends},
+Description: Spotlight-style Konsole tab finder
+ A system tray app with a spotlight-style search window for quickly
+ finding and switching between Konsole tabs. Searches by tab title
+ and running command (useful for SSH sessions). Works on Wayland
+ via KWin D-Bus scripting.

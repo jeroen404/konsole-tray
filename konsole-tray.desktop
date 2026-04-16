@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Konsole Tab Finder
+Comment=Spotlight-style search for Konsole tabs
+Exec=konsole-tray
+Icon=utilities-terminal
+Terminal=false
+Categories=Qt;KDE;Utility;
+Keywords=konsole;terminal;tabs;search;ssh;
