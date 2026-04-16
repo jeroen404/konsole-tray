@@ -233,30 +233,17 @@ if (target) workspace.activeWindow = target;
 
 
 def activate_tab(tab: KonsoleTab) -> None:
-    """Switch to a tab and raise its Konsole window.
+    """Raise the Konsole window and then switch to the target tab.
 
-    KWin caches window captions lazily — Konsole only pushes the
-    updated caption to KWin when the window is actually activated.
-    So after setCurrentSession, KWin still sees the *previously*
-    active tab's title until the window is raised. We therefore
-    identify the target window using the title of whichever session
-    is currently active, captured before we switch tabs.
+    Order matters: KWin updates its cached caption lazily (only on
+    window activation), so we raise first — matching on the title
+    of whichever session is currently active in the target window —
+    and switch tabs afterwards.
     """
     try:
         pid = int(tab.service.removeprefix("org.kde.konsole-"))
     except ValueError:
         return
-
-    candidates: list[str] = []
-
-    def add_session_titles(sid: int) -> None:
-        for ctx in ("1", "0"):
-            t = _run([
-                "qdbus6", tab.service, f"/Sessions/{sid}",
-                "org.kde.konsole.Session.title", ctx,
-            ])
-            if t and t not in candidates:
-                candidates.append(t)
 
     current_sid_str = _run([
         "qdbus6", tab.service, tab.window_path,
@@ -266,10 +253,15 @@ def activate_tab(tab: KonsoleTab) -> None:
         current_sid = int(current_sid_str)
     except ValueError:
         current_sid = tab.session_id
-    add_session_titles(current_sid)
-    if current_sid != tab.session_id:
-        add_session_titles(tab.session_id)
 
-    set_current_session(tab.service, tab.window_path, tab.session_id)
-    time.sleep(0.1)
+    candidates: list[str] = []
+    for ctx in ("1", "0"):
+        t = _run([
+            "qdbus6", tab.service, f"/Sessions/{current_sid}",
+            "org.kde.konsole.Session.title", ctx,
+        ])
+        if t and t not in candidates:
+            candidates.append(t)
+
     raise_window(pid, candidates)
+    set_current_session(tab.service, tab.window_path, tab.session_id)
