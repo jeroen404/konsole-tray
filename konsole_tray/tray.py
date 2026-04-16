@@ -22,7 +22,7 @@ QLineEdit {
 }
 QListWidget {
     border: none;
-    background: transparent;
+    background: palette(base);
     font-size: 14px;
 }
 QListWidget::item {
@@ -51,11 +51,10 @@ class SpotlightWindow(QWidget):
         self.setObjectName("Spotlight")
         self.setWindowTitle("Konsole Tab Finder")
         self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowStaysOnTopHint
+            Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Dialog
         )
-        self.setFixedSize(500, 400)
+        self.setFixedSize(700, 600)
         self.setStyleSheet(_STYLE)
 
         self._all_items: list[tuple[QListWidgetItem, KonsoleTab | None]] = []

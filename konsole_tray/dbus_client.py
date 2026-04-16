@@ -199,26 +199,77 @@ def _run_kwin_script(js: str, name: str) -> None:
         os.unlink(script_path)
 
 
-def raise_window(title: str) -> None:
-    """Raise a Konsole window on Wayland via KWin scripting."""
-    safe_title = title.replace("\\", "\\\\").replace('"', '\\"')
+def raise_window(pid: int, candidates: list[str]) -> None:
+    """Raise a Konsole window on Wayland via KWin scripting.
+
+    Tries each candidate string as a caption substring within the
+    given pid's windows. Only falls back to "first window of pid"
+    when that pid has exactly one window, to avoid raising the
+    wrong window when a Konsole process owns several.
+    """
+    escaped = [c.replace("\\", "\\\\").replace('"', '\\"') for c in candidates if c]
+    js_arr = "[" + ",".join(f'"{s}"' for s in escaped) + "]"
     _run_kwin_script(f"""\
+var candidates = {js_arr};
 var windows = workspace.windowList();
+var pidMatches = [];
+var exact = null;
 for (var i = 0; i < windows.length; i++) {{
-    if (windows[i].caption.indexOf("{safe_title}") !== -1) {{
-        workspace.activeWindow = windows[i];
-        break;
+    var w = windows[i];
+    if (w.pid !== {pid}) continue;
+    pidMatches.push(w);
+    for (var j = 0; j < candidates.length; j++) {{
+        if (w.caption.indexOf(candidates[j]) !== -1) {{
+            exact = w;
+            break;
+        }}
     }}
+    if (exact) break;
 }}
+var target = exact !== null ? exact : (pidMatches.length === 1 ? pidMatches[0] : null);
+if (target) workspace.activeWindow = target;
 """, "FocusKonsole")
 
 
 
 def activate_tab(tab: KonsoleTab) -> None:
-    """Switch to a tab and raise its Konsole window."""
+    """Switch to a tab and raise its Konsole window.
+
+    KWin caches window captions lazily — Konsole only pushes the
+    updated caption to KWin when the window is actually activated.
+    So after setCurrentSession, KWin still sees the *previously*
+    active tab's title until the window is raised. We therefore
+    identify the target window using the title of whichever session
+    is currently active, captured before we switch tabs.
+    """
+    try:
+        pid = int(tab.service.removeprefix("org.kde.konsole-"))
+    except ValueError:
+        return
+
+    candidates: list[str] = []
+
+    def add_session_titles(sid: int) -> None:
+        for ctx in ("1", "0"):
+            t = _run([
+                "qdbus6", tab.service, f"/Sessions/{sid}",
+                "org.kde.konsole.Session.title", ctx,
+            ])
+            if t and t not in candidates:
+                candidates.append(t)
+
+    current_sid_str = _run([
+        "qdbus6", tab.service, tab.window_path,
+        "org.kde.konsole.Window.currentSession",
+    ])
+    try:
+        current_sid = int(current_sid_str)
+    except ValueError:
+        current_sid = tab.session_id
+    add_session_titles(current_sid)
+    if current_sid != tab.session_id:
+        add_session_titles(tab.session_id)
+
     set_current_session(tab.service, tab.window_path, tab.session_id)
     time.sleep(0.1)
-    # Re-read title after switching, as the window title may have updated
-    title = get_session_title(tab.service, tab.session_id)
-    if title:
-        raise_window(title)
+    raise_window(pid, candidates)
