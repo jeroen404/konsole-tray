@@ -210,12 +210,27 @@ class KonsoleTray:
 
         self._spotlight = SpotlightWindow()
 
-        # Both left and right click toggle the spotlight
-        # (setContextMenu steals right-click but doesn't render on Wayland)
+        # Right-click: context menu (must use aboutToShow for KDE DBusMenu protocol)
+        self.menu = QMenu()
+        self.menu.aboutToShow.connect(self._populate_menu)
+        self.tray.setContextMenu(self.menu)
+
+        # Left-click: spotlight
         self.tray.activated.connect(self._on_tray_activated)
 
     def show(self) -> None:
         self.tray.show()
 
+    def _populate_menu(self) -> None:
+        self.menu.clear()
+        search_action = QAction("Search Tabs...", self.menu)
+        search_action.triggered.connect(self._spotlight.toggle)
+        self.menu.addAction(search_action)
+        self.menu.addSeparator()
+        quit_action = QAction("Quit", self.menu)
+        quit_action.triggered.connect(QApplication.quit)
+        self.menu.addAction(quit_action)
+
     def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
-        self._spotlight.toggle()
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            self._spotlight.toggle()
