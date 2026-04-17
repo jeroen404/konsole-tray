@@ -1,7 +1,7 @@
 Source: konsole-tray
 Section: kde
 Priority: optional
-Maintainer: Jeroen Coekaerts <jeroen@dnxnetwork.lu>
+Maintainer: Jeroen Coekaerts <jeroen@404.eu>
 Rules-Requires-Root: no
 Build-Depends:
  debhelper-compat (= 13),
