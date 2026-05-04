@@ -1,0 +1,34 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y debhelper dh-python python3-all python3-setuptools pybuild-plugin-pyproject
+
+      - name: Build .deb
+        run: dpkg-buildpackage -b --no-sign
+
+      - name: Find .deb
+        id: find_deb
+        run: echo "path=$(ls ../*.deb)" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.find_deb.outputs.path }}
+          generate_release_notes: true

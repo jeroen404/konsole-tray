@@ -1,6 +1,6 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QApplication, QHBoxLayout, QLineEdit, QListWidget, QListWidgetItem,
+    QApplication, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
     QMenu, QPushButton, QSystemTrayIcon, QVBoxLayout, QWidget,
 )
 from PyQt6.QtGui import QAction, QIcon, QKeyEvent, QKeySequence, QShortcut
@@ -80,9 +80,12 @@ class SpotlightWindow(QWidget):
         bottom.setContentsMargins(0, 0, 0, 0)
         close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.hide)
+        self._count_label = QLabel()
+        self._count_label.setStyleSheet("color: palette(mid); font-size: 12px;")
         quit_btn = QPushButton("Quit")
         quit_btn.clicked.connect(QApplication.quit)
         bottom.addWidget(close_btn)
+        bottom.addWidget(self._count_label)
         bottom.addStretch()
         bottom.addWidget(quit_btn)
         layout.addLayout(bottom)
@@ -126,8 +129,10 @@ class SpotlightWindow(QWidget):
             item.setFlags(Qt.ItemFlag.NoItemFlags)
             self._list.addItem(item)
             self._all_items.append((item, None))
+            self._count_label.setText("")
             return
 
+        tab_count = 0
         for win in windows:
             win_num = win.window_path.split("/")[-1]
             header = QListWidgetItem(f"Window {win_num}")
@@ -143,6 +148,9 @@ class SpotlightWindow(QWidget):
                 item = QListWidgetItem(f"  {label}")
                 self._list.addItem(item)
                 self._all_items.append((item, tab))
+                tab_count += 1
+
+        self._count_label.setText(f"{tab_count} tab{'s' if tab_count != 1 else ''}")
 
     @staticmethod
     def _format_tab_label(tab: KonsoleTab) -> str:
