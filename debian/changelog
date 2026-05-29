@@ -1,3 +1,13 @@
+konsole-tray (0.1.2-1) unstable; urgency=medium
+
+  * Fix raising the wrong window/tab when several Konsole windows run in one
+    process and their active tabs share a generic session name (most visible
+    with multiple "claude" tabs). Disambiguate windows by their specific
+    displayed title rather than the generic NameRole, and match the most
+    specific candidate across all windows before any less specific one.
+
+ -- Jeroen Coekaerts <jeroen@404.eu>  Fri, 29 May 2026 09:55:25 +0200
+
 konsole-tray (0.1.1-1) unstable; urgency=medium
 
   * Show total tab count next to the Close button in the popup window.

@@ -201,10 +201,12 @@ def _run_kwin_script(js: str, name: str) -> None:
 def raise_window(pid: int, candidates: list[str]) -> None:
     """Raise a Konsole window on Wayland via KWin scripting.
 
-    Tries each candidate string as a caption substring within the
-    given pid's windows. Only falls back to "first window of pid"
-    when that pid has exactly one window, to avoid raising the
-    wrong window when a Konsole process owns several.
+    `candidates` is ordered most-specific-first. Each candidate is tried
+    as a caption substring across all of the given pid's windows before
+    moving on to the next, so a more specific caption always wins over a
+    less specific one regardless of window order. Only falls back to
+    "first window of pid" when that pid has exactly one window, to avoid
+    raising the wrong window when a Konsole process owns several.
     """
     escaped = [c.replace("\\", "\\\\").replace('"', '\\"') for c in candidates if c]
     js_arr = "[" + ",".join(f'"{s}"' for s in escaped) + "]"
@@ -212,20 +214,23 @@ def raise_window(pid: int, candidates: list[str]) -> None:
 var candidates = {js_arr};
 var windows = workspace.windowList();
 var pidMatches = [];
-var exact = null;
 for (var i = 0; i < windows.length; i++) {{
-    var w = windows[i];
-    if (w.pid !== {pid}) continue;
-    pidMatches.push(w);
-    for (var j = 0; j < candidates.length; j++) {{
-        if (w.caption.indexOf(candidates[j]) !== -1) {{
-            exact = w;
+    if (windows[i].pid === {pid}) pidMatches.push(windows[i]);
+}}
+// Match by candidate specificity, not window order: try the most specific
+// candidate against every window before falling back to a less specific one.
+// (Otherwise a generic candidate like "claude" matches whichever Konsole
+// window happens to come first in workspace order — the wrong one.)
+var target = null;
+for (var j = 0; j < candidates.length && target === null; j++) {{
+    for (var i = 0; i < pidMatches.length; i++) {{
+        if (pidMatches[i].caption.indexOf(candidates[j]) !== -1) {{
+            target = pidMatches[i];
             break;
         }}
     }}
-    if (exact) break;
 }}
-var target = exact !== null ? exact : (pidMatches.length === 1 ? pidMatches[0] : null);
+if (target === null && pidMatches.length === 1) target = pidMatches[0];
 if (target) workspace.activeWindow = target;
 """, "FocusKonsole")
 
@@ -253,14 +258,25 @@ def activate_tab(tab: KonsoleTab) -> None:
     except ValueError:
         current_sid = tab.session_id
 
+    # title(1) is the displayed title — the string KWin uses as the window
+    # caption, so it's the reliable disambiguator. title(0) (the NameRole) is
+    # often a generic constant shared across many windows (e.g. every Claude
+    # tab reports "claude"), which would match the wrong window; only fall back
+    # to it when there is no displayed title at all.
     candidates: list[str] = []
-    for ctx in ("1", "0"):
-        t = _run([
+    displayed = _run([
+        "qdbus6", tab.service, f"/Sessions/{current_sid}",
+        "org.kde.konsole.Session.title", "1",
+    ])
+    if displayed:
+        candidates.append(displayed)
+    else:
+        name = _run([
             "qdbus6", tab.service, f"/Sessions/{current_sid}",
-            "org.kde.konsole.Session.title", ctx,
+            "org.kde.konsole.Session.title", "0",
         ])
-        if t and t not in candidates:
-            candidates.append(t)
+        if name:
+            candidates.append(name)
 
     raise_window(pid, candidates)
     set_current_session(tab.service, tab.window_path, tab.session_id)
