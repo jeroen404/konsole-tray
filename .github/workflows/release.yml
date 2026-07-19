@@ -13,7 +13,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: |
@@ -29,13 +29,14 @@ jobs:
           cp ../*.deb dist/
 
       - name: Upload .deb artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deb
           path: dist/*.deb
+          retention-days: 1
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/*.deb
           generate_release_notes: true
@@ -53,12 +54,12 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Download the freshly built .deb
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: deb
           path: incoming
@@ -93,3 +94,28 @@ jobs:
           git add -A
           git commit -m "apt repo: ${GITHUB_REF_NAME:-manual}"
           git push origin gh-pages
+
+  # Keep the Releases page tidy: after a new release is published, delete all
+  # but the 3 most recent releases. Tags are kept (no --cleanup-tag), so the
+  # commits stay reachable and a release can be recreated. The apt repo on
+  # gh-pages is untouched — old .debs remain installable via apt.
+  cleanup-old-releases:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Delete releases older than the newest 3 (tags kept)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euxo pipefail
+          gh release list --limit 200 --json tagName,createdAt \
+            --jq 'sort_by(.createdAt) | reverse | .[3:] | .[].tagName' \
+            | while read -r tag; do
+                [ -n "$tag" ] || continue
+                echo "Deleting release $tag (keeping its tag)"
+                gh release delete "$tag" --yes
+              done
