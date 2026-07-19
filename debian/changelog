@@ -1,3 +1,11 @@
+konsole-tray (0.1.3-1) unstable; urgency=medium
+
+  * Publish an unsigned flat apt repository to GitHub Pages on each release,
+    so it can be installed and upgraded via apt:
+        deb [trusted=yes] https://jeroen404.github.io/konsole-tray ./
+
+ -- Jeroen Coekaerts <jeroen@404.eu>  Sun, 19 Jul 2026 20:10:56 +0200
+
 konsole-tray (0.1.2-1) unstable; urgency=medium
 
   * Fix raising the wrong window/tab when several Konsole windows run in one

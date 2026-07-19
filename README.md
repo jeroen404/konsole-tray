@@ -11,6 +11,17 @@ containing Konsole window and switches to that tab.
 Only works on KDE Plasma with KWin. Only tested on Wayland (Plasma 6). It
 may work on X11 / Plasma 5 but nothing has been checked there.
 
+## Install
+
+Prebuilt packages are published to an apt repository on GitHub Pages:
+
+    echo 'deb [trusted=yes] https://jeroen404.github.io/konsole-tray ./' \
+      | sudo tee /etc/apt/sources.list.d/konsole-tray.list
+    sudo apt update && sudo apt install konsole-tray
+
+The repository is unsigned; `[trusted=yes]` tells apt to accept it without a
+GPG signature.
+
 ## Build a .deb
 
 ```

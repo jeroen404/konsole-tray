@@ -6,7 +6,7 @@ on:
       - "v*"
 
 jobs:
-  build-and-release:
+  build:
     runs-on: ubuntu-latest
     container: debian:trixie
     permissions:
@@ -23,12 +23,73 @@ jobs:
       - name: Build .deb
         run: dpkg-buildpackage -b --no-sign
 
-      - name: Find .deb
-        id: find_deb
-        run: echo "path=$(ls ../*.deb)" >> "$GITHUB_OUTPUT"
+      - name: Collect .deb into the workspace
+        run: |
+          mkdir -p dist
+          cp ../*.deb dist/
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: dist/*.deb
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.find_deb.outputs.path }}
+          files: dist/*.deb
           generate_release_notes: true
+
+  # Publish an (unsigned) flat apt repo to the gh-pages branch. Users add:
+  #   deb [trusted=yes] https://jeroen404.github.io/konsole-tray ./
+  # then `apt update && apt install konsole-tray`. No GPG: [trusted=yes] tells
+  # apt to accept the repo without a signature. The gh-pages branch is created
+  # on the first run; enable Pages (Settings -> Pages -> Deploy from branch ->
+  # gh-pages) once it exists.
+  publish-apt:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download the freshly built .deb
+        uses: actions/download-artifact@v4
+        with:
+          name: deb
+          path: incoming
+
+      - name: Install apt repo tooling
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev apt-utils
+
+      - name: Publish flat apt repo to gh-pages
+        run: |
+          set -eux
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Switch to gh-pages, creating it as an orphan branch on the first run.
+          git fetch origin gh-pages || true
+          if git rev-parse --verify origin/gh-pages >/dev/null 2>&1; then
+            git checkout -B gh-pages origin/gh-pages
+          else
+            git checkout --orphan gh-pages
+            git rm -rf . >/dev/null 2>&1 || true   # clear the tag's tree (incoming/ is untracked and survives)
+          fi
+
+          # Accumulate the new .deb and regenerate the flat-repo index.
+          mkdir -p pool
+          cp incoming/*.deb pool/
+          dpkg-scanpackages --multiversion pool /dev/null > Packages
+          gzip -9c Packages > Packages.gz
+          apt-ftparchive release . > Release
+          touch .nojekyll   # stop GitHub Pages' Jekyll from touching the files
+
+          rm -rf incoming
+          git add -A
+          git commit -m "apt repo: ${GITHUB_REF_NAME:-manual}"
+          git push origin gh-pages
