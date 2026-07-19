@@ -1,0 +1,19 @@
+Package: konsole-tray
+Version: 0.1.3-1
+Architecture: all
+Maintainer: Jeroen Coekaerts <jeroen@404.eu>
+Installed-Size: 45
+Depends: python3-pyqt6, qdbus-qt6, python3:any
+Filename: pool/konsole-tray_0.1.3-1_all.deb
+Size: 8932
+MD5sum: 0ddb661a8a63f810f6370f55060c6dc4
+SHA1: f24d0806fa7841df09d3ebf200a0e541925dd644
+SHA256: 2358bb68a5c6a4e508d763b4fce27e785d59e024888402c56892fd5de5148a12
+Section: kde
+Priority: optional
+Description: Spotlight-style Konsole tab finder
+ A system tray app with a spotlight-style search window for quickly
+ finding and switching between Konsole tabs. Searches by tab title
+ and running command (useful for SSH sessions). Works on Wayland
+ via KWin D-Bus scripting.
+
