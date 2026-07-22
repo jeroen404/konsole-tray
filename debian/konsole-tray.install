@@ -1,1 +1,2 @@
 konsole-tray.desktop usr/share/applications
+konsole-tray.desktop etc/xdg/autostart

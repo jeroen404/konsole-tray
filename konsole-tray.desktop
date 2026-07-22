@@ -8,3 +8,4 @@ Terminal=false
 StartupNotify=false
 Categories=Qt;KDE;Utility;
 Keywords=konsole;terminal;tabs;search;ssh;
+X-KDE-autostart-after=panel

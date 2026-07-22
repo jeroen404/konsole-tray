@@ -1,3 +1,11 @@
+konsole-tray (0.1.4-1) unstable; urgency=medium
+
+  * Ship an XDG autostart entry (/etc/xdg/autostart/konsole-tray.desktop)
+    so the tray app starts at desktop login, ordered after the panel so
+    the system tray exists when the icon registers.
+
+ -- Jeroen Coekaerts <jeroen@404.eu>  Wed, 22 Jul 2026 21:45:00 +0200
+
 konsole-tray (0.1.3-1) unstable; urgency=medium
 
   * Publish an unsigned flat apt repository to GitHub Pages on each release,
